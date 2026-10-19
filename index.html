@@ -24,6 +24,7 @@ h1{font-size:18px;margin:0}#where{font-size:12px;color:#bac6d9;margin-top:4px}.t
 <button id="next" aria-label="Next photo">Next ▶</button>
 <button id="vr" class="primary">Enter VR</button>
 <button id="voice">🔊 Voice: On</button>
+<button id="connectBle">Connect ESP32</button>
 </div>
 <div id="viewer">
 <a-scene id="scene" embedded renderer="colorManagement:true;antialias:true" vr-mode-ui="enabled:true" device-orientation-permission-ui="enabled:true" loading-screen="enabled:false">
@@ -68,6 +69,30 @@ document.querySelector("#prev").onclick=()=>show(idx-1);
 document.querySelector("#next").onclick=()=>show(idx+1);
 select.onchange=()=>show(Number(select.value));
 document.querySelector("#voice").onclick=()=>{voiceOn=!voiceOn;document.querySelector("#voice").textContent=voiceOn?"🔊 Voice: On":"🔇 Voice: Off";if(!voiceOn&&window.speechSynthesis)speechSynthesis.cancel();else speak(photos[idx].say)};
+// BLE connection for ESP32 DevKit V1; Web Bluetooth requires HTTPS and a user gesture.
+const BLE_SERVICE_UUID="7b3e0001-7d9a-4b8e-a4f2-9c3f6a2d1000";
+const BLE_COMMAND_UUID="7b3e0002-7d9a-4b8e-a4f2-9c3f6a2d1000";
+const connectBtn=document.querySelector("#connectBle");
+connectBtn.onclick=async()=>{
+ if(!navigator.bluetooth){alert("Web Bluetooth is unavailable. Open this HTTPS page in Chrome on Android.");return;}
+ try{
+  connectBtn.textContent="Connecting…";
+  const device=await navigator.bluetooth.requestDevice({filters:[{services:[BLE_SERVICE_UUID]}]});
+  device.addEventListener("gattserverdisconnected",()=>connectBtn.textContent="Connect ESP32");
+  const server=await device.gatt.connect();
+  const service=await server.getPrimaryService(BLE_SERVICE_UUID);
+  const ch=await service.getCharacteristic(BLE_COMMAND_UUID);
+  await ch.startNotifications();
+  ch.addEventListener("characteristicvaluechanged",ev=>{
+   const v=ev.target.value;let cmd="";
+   for(let i=0;i<v.byteLength;i++)cmd+=String.fromCharCode(v.getUint8(i));
+   cmd=cmd.trim().toUpperCase();
+   if(cmd==="NEXT")show(idx+1);else if(cmd==="PREV")show(idx-1);
+  });
+  connectBtn.textContent="ESP32 Connected";
+  hints.textContent="ESP32 connected. Use its physical Previous/Next buttons.";
+ }catch(e){connectBtn.textContent="Connect ESP32";alert("Could not connect. Power the ESP32, enable Bluetooth, and open this HTTPS page in Chrome. "+e.message);}
+};
 document.querySelector("#vr").onclick=async()=>{try{if(scene.is("vr-mode"))await scene.exitVR();else await scene.enterVR()}catch(e){alert("VR mode could not start. Open this page in Chrome on Android over HTTPS, allow motion/orientation access, then tap Enter VR. "+e.message)}};
 scene.addEventListener("enter-vr",()=>{document.querySelector("#vr").textContent="Exit VR";hints.textContent="VR mode active: put the phone in a headset and gaze at a marker for about 1.8 seconds."});
 scene.addEventListener("exit-vr",()=>{document.querySelector("#vr").textContent="Enter VR";hints.textContent="Drag to look around, or use the location menu and Previous/Next controls."});
