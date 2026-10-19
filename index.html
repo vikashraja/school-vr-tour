@@ -113,13 +113,13 @@ async function startHandMesh(){
   handPanel.hidden=false; handRunning=true; handStatus.textContent='Requesting camera permission…';
   handStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:{ideal:640},height:{ideal:480}},audio:false});
   handVideo.srcObject=handStream; await handVideo.play();
-  const vision=await import('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.22');
-  const fileset=await vision.FilesetResolver.forVisionTasks('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.22/wasm');
+  const vision=await import('https://esm.sh/@mediapipe/tasks-vision@0.10.22');
+  const fileset=await vision.FilesetResolver.forVisionTasks('https://unpkg.com/@mediapipe/tasks-vision@0.10.22/wasm');
   handLandmarker=await vision.HandLandmarker.createFromOptions(fileset,{baseOptions:{modelAssetPath:'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task',delegate:'GPU'},runningMode:'VIDEO',numHands:2});
   handStatus.textContent='Show your hand to the camera'; handButton.textContent='✋ Hand Mesh On';
   handCanvas.width=handVideo.videoWidth||640;handCanvas.height=handVideo.videoHeight||480;
   requestAnimationFrame(drawHandMesh);
- }catch(err){stopHandMesh();alert('Could not start hand mesh. Allow camera access and check your internet connection. '+err.message)}
+ }catch(err){stopHandMesh();alert('Could not start hand mesh. Check camera permission and internet access; if a CDN is blocked, try another network. '+err.message)}
  finally{handButton.disabled=false;}
 }
 function drawHandMesh(){
