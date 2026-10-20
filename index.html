@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <meta name="theme-color" content="#101827">
+<meta name="color-scheme" content="dark">
 <title>School 360° VR Tour</title>
 <script src="https://aframe.io/releases/1.7.0/aframe.min.js"></script>
 <style>
@@ -13,10 +14,10 @@ h1{font-size:18px;margin:0}#where{font-size:12px;color:#bac6d9;margin-top:4px}.t
 #bar{display:flex;flex-wrap:wrap;gap:7px;padding:9px;background:#151f31;z-index:4}button,select{border:1px solid #465873;border-radius:9px;padding:10px 11px;min-height:40px;background:#25334a;color:#fff;font-size:14px}button{cursor:pointer}button.primary{background:#167d74;border-color:#37b9a9}select{flex:1;min-width:155px}
 #viewer{flex:1;min-height:0;position:relative}a-scene{width:100%;height:100%}#hint{position:absolute;bottom:10px;left:10px;right:10px;padding:9px 11px;border-radius:10px;background:#0009;text-align:center;font-size:12px;z-index:3;pointer-events:none}
 #foot{font-size:11px;color:#bac6d9;padding:7px 10px;background:#101827}
-#handPanel{position:fixed;inset:0;background:#000;z-index:20;display:flex;align-items:center;justify-content:center;flex-direction:column}
+#handPanel{position:fixed;inset:0;background:radial-gradient(ellipse at center,#071b2b 0%,#02070d 55%,#000 100%);z-index:20;display:flex;align-items:center;justify-content:center;flex-direction:column}
 #handPanel[hidden]{display:none}#handVideo{display:none}#handCanvas{width:100%;height:100%;object-fit:contain;background:#000;position:absolute;inset:0}
-#handStatus{position:absolute;top:14px;left:12px;z-index:22;color:#fff;background:#222b;padding:8px 10px;border-radius:8px;font-size:13px}
-#stopHand{position:absolute;bottom:20px;left:50%;transform:translateX(-50%);z-index:22;background:#222;border-color:#fff}
+#handStatus{position:absolute;top:14px;left:12px;right:12px;z-index:22;color:#aafaff;background:rgba(2,18,30,.78);border:1px solid rgba(45,231,255,.45);box-shadow:0 0 18px rgba(0,220,255,.18);padding:10px 12px;border-radius:12px;font-size:13px;letter-spacing:.04em;text-shadow:0 0 8px #00d9ff}
+#stopHand{position:absolute;bottom:20px;left:50%;transform:translateX(-50%);z-index:22;background:rgba(3,25,38,.9);border-color:#26eaff;color:#c9fbff;box-shadow:0 0 18px #00cfff55}
 @media(min-width:760px){h1{font-size:20px}#bar{padding:10px 14px}}
 </style>
 </head>
@@ -44,7 +45,7 @@ h1{font-size:18px;margin:0}#where{font-size:12px;color:#bac6d9;margin-top:4px}.t
 <div id="hint">Drag to look around on a computer. On a phone, move your phone to look around. Choose Enter VR for split-screen headset mode.</div>
 </div>
 <div id="foot">Includes all 11 school panorama photos. For offline hand tracking, place MediaPipe assets in the local vendor/ and models/ folders as described in README.md. The 360° viewer still loads A-Frame from the internet unless that library is also bundled.</div>
-<div id="handPanel" hidden><video id="handVideo" playsinline autoplay muted></video><canvas id="handCanvas"></canvas><div id="handStatus">Hand Mesh is off</div><button id="stopHand">Close Hand Mesh</button></div>
+<div id="handPanel" hidden><video id="handVideo" playsinline autoplay muted></video><canvas id="handCanvas"></canvas><div id="handStatus">HOLO MESH · Initialising camera…</div><button id="stopHand">✕ Close Hand Mesh</button></div>
 <script>
 const photos = Array.from({length:11},(_,i)=>({
  name:`School View ${String(i+1).padStart(2,'0')}`,
@@ -111,12 +112,17 @@ async function startHandMesh(){
  handButton.disabled=true;handButton.textContent='Loading…';
  try{
   handPanel.hidden=false; handRunning=true; handStatus.textContent='Requesting camera permission…';
-  handStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:{ideal:640},height:{ideal:480}},audio:false});
+  // Prefer the rear/environment camera on phones. Fall back to any camera if the device cannot satisfy it.
+  try{
+   handStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:720}},audio:false});
+  }catch(cameraErr){
+   handStream=await navigator.mediaDevices.getUserMedia({video:{width:{ideal:640},height:{ideal:480}},audio:false});
+  }
   handVideo.srcObject=handStream; await handVideo.play();
   const vision=await import('./vendor/tasks-vision/vision_bundle.mjs');
   const fileset=await vision.FilesetResolver.forVisionTasks('./vendor/tasks-vision/wasm');
   handLandmarker=await vision.HandLandmarker.createFromOptions(fileset,{baseOptions:{modelAssetPath:'./models/hand_landmarker.task',delegate:'CPU'},runningMode:'VIDEO',numHands:2});
-  handStatus.textContent='Show your hand to the camera'; handButton.textContent='✋ Hand Mesh On';
+  handStatus.textContent='HOLO MESH ACTIVE · Show your hand'; handButton.textContent='✋ Hand Mesh On';
   handCanvas.width=handVideo.videoWidth||640;handCanvas.height=handVideo.videoHeight||480;
   requestAnimationFrame(drawHandMesh);
  }catch(err){stopHandMesh();alert('Could not start hand mesh. Check camera permission and confirm local MediaPipe files are installed as described in README.md. '+err.message)}
@@ -127,16 +133,69 @@ function drawHandMesh(){
  if(handVideo.readyState>=2 && handVideo.currentTime!==handLastVideoTime){
   handLastVideoTime=handVideo.currentTime;
   if(handCanvas.width!==handVideo.videoWidth||handCanvas.height!==handVideo.videoHeight){handCanvas.width=handVideo.videoWidth;handCanvas.height=handVideo.videoHeight;}
-  handCtx.fillStyle='#000';handCtx.fillRect(0,0,handCanvas.width,handCanvas.height);
+  const w=handCanvas.width,h=handCanvas.height,now=performance.now();
+  // Deep space background with a subtle animated holographic grid.
+  handCtx.fillStyle='#02070d';handCtx.fillRect(0,0,w,h);
+  handCtx.save();
+  handCtx.strokeStyle='rgba(0,210,255,0.075)';handCtx.lineWidth=1;
+  const grid=Math.max(28,Math.round(w/18)),shift=(now*.012)%grid;
+  for(let x=-grid+shift;x<w;x+=grid){handCtx.beginPath();handCtx.moveTo(x,0);handCtx.lineTo(x,h);handCtx.stroke();}
+  for(let y=0;y<h;y+=grid){handCtx.beginPath();handCtx.moveTo(0,y);handCtx.lineTo(w,y);handCtx.stroke();}
+  const vignette=handCtx.createRadialGradient(w*.5,h*.48,Math.min(w,h)*.08,w*.5,h*.48,Math.max(w,h)*.7);
+  vignette.addColorStop(0,'rgba(0,35,55,.08)');vignette.addColorStop(1,'rgba(0,0,0,.62)');
+  handCtx.fillStyle=vignette;handCtx.fillRect(0,0,w,h);handCtx.restore();
   try{
-   const result=handLandmarker.detectForVideo(handVideo,performance.now());
-   const hands=result.landmarks||[];handStatus.textContent=hands.length?`${hands.length} hand${hands.length>1?'s':''} detected`:'Show your hand to the camera';
-   for(const lm of hands){
-    handCtx.strokeStyle='#fff';handCtx.lineWidth=Math.max(2,handCanvas.width/320);handCtx.lineCap='round';
-    for(const [a,b] of HAND_EDGES){if(lm[a]&&lm[b]){handCtx.beginPath();handCtx.moveTo(lm[a].x*handCanvas.width,lm[a].y*handCanvas.height);handCtx.lineTo(lm[b].x*handCanvas.width,lm[b].y*handCanvas.height);handCtx.stroke();}}
-    handCtx.fillStyle='#fff';for(const pt of lm){handCtx.beginPath();handCtx.arc(pt.x*handCanvas.width,pt.y*handCanvas.height,Math.max(2,handCanvas.width/180),0,Math.PI*2);handCtx.fill();}
+   const result=handLandmarker.detectForVideo(handVideo,now);
+   const hands=result.landmarks||[];
+   handStatus.textContent=hands.length?`HOLO MESH ACTIVE · ${hands.length} HAND${hands.length>1?'S':''} TRACKED`:'HOLO MESH · Show your hand to the rear camera';
+   const fingertips=[4,8,12,16,20];
+   for(let hi=0;hi<hands.length;hi++){
+    const lm=hands[hi];
+    const point=(i)=>({x:lm[i].x*w,y:lm[i].y*h});
+    // Soft cyan glow under the full skeleton.
+    handCtx.save();handCtx.lineCap='round';handCtx.lineJoin='round';
+    handCtx.shadowColor='#00dfff';handCtx.shadowBlur=Math.max(8,w/45);
+    handCtx.strokeStyle='rgba(0,225,255,.32)';handCtx.lineWidth=Math.max(5,w/110);
+    for(const [a,b] of HAND_EDGES){const A=point(a),B=point(b);handCtx.beginPath();handCtx.moveTo(A.x,A.y);handCtx.lineTo(B.x,B.y);handCtx.stroke();}
+    // Bright gradient lines with a cool-blue edge.
+    handCtx.shadowBlur=Math.max(3,w/150);handCtx.lineWidth=Math.max(1.6,w/360);
+    for(const [a,b] of HAND_EDGES){
+     const A=point(a),B=point(b),g=handCtx.createLinearGradient(A.x,A.y,B.x,B.y);
+     g.addColorStop(0,'#39fff3');g.addColorStop(.5,'#21aaff');g.addColorStop(1,'#b2ffff');
+     handCtx.strokeStyle=g;handCtx.beginPath();handCtx.moveTo(A.x,A.y);handCtx.lineTo(B.x,B.y);handCtx.stroke();
+    }
+    // Glowing joints, with larger fingertip nodes.
+    for(let i=0;i<lm.length;i++){
+     const P=point(i),tip=fingertips.includes(i),r=tip?Math.max(4,w/125):Math.max(2.2,w/260);
+     handCtx.shadowColor=tip?'#ffffff':'#00eaff';handCtx.shadowBlur=tip?Math.max(12,w/55):Math.max(5,w/100);
+     handCtx.fillStyle=tip?'#f3ffff':'#54f8ff';handCtx.beginPath();handCtx.arc(P.x,P.y,r,0,Math.PI*2);handCtx.fill();
+     handCtx.shadowBlur=0;handCtx.strokeStyle=tip?'rgba(255,255,255,.9)':'rgba(76,231,255,.8)';handCtx.lineWidth=1;
+     handCtx.beginPath();handCtx.arc(P.x,P.y,r+Math.max(2,w/190),0,Math.PI*2);handCtx.stroke();
+     if(tip){
+      const pulse=(Math.sin(now/180+i)+1)/2,rr=r+5+pulse*Math.max(4,w/100);
+      handCtx.strokeStyle=`rgba(80,245,255,${.35+pulse*.55})`;handCtx.lineWidth=1.5;
+      handCtx.beginPath();handCtx.arc(P.x,P.y,rr,0,Math.PI*2);handCtx.stroke();
+      // Small crosshair ticks around each fingertip.
+      handCtx.beginPath();handCtx.moveTo(P.x-rr-4,P.y);handCtx.lineTo(P.x-rr+1,P.y);handCtx.moveTo(P.x+rr-1,P.y);handCtx.lineTo(P.x+rr+4,P.y);handCtx.moveTo(P.x,P.y-rr-4);handCtx.lineTo(P.x,P.y-rr+1);handCtx.moveTo(P.x,P.y+rr-1);handCtx.lineTo(P.x,P.y+rr+4);handCtx.stroke();
+     }
+    }
+    // Palm centre: animated concentric hologram rings.
+    const palm=point(9),pulse=(Math.sin(now/240+hi)+1)/2;
+    handCtx.shadowColor='#00eaff';handCtx.shadowBlur=12;handCtx.strokeStyle=`rgba(45,230,255,${.35+pulse*.5})`;handCtx.lineWidth=1.3;
+    handCtx.beginPath();handCtx.arc(palm.x,palm.y,Math.max(8,w/65)+pulse*5,0,Math.PI*2);handCtx.stroke();
+    handCtx.shadowBlur=0;handCtx.restore();
    }
-  }catch(e){handStatus.textContent='Tracking…';}
+   if(!hands.length){
+    // Minimal scanning reticle when no hand is visible.
+    const cx=w/2,cy=h/2,r=Math.min(w,h)*.12;
+    handCtx.save();handCtx.strokeStyle='rgba(0,220,255,.35)';handCtx.lineWidth=1.5;
+    handCtx.beginPath();handCtx.arc(cx,cy,r,now/1000,now/1000+Math.PI*1.45);handCtx.stroke();
+    handCtx.beginPath();handCtx.arc(cx,cy,r*.72,-now/1300,-now/1300+Math.PI*1.2);handCtx.stroke();handCtx.restore();
+   }
+   // Small HUD footer.
+   handCtx.save();handCtx.font=`${Math.max(10,w/85)}px monospace`;handCtx.fillStyle='rgba(115,240,255,.8)';
+   handCtx.fillText('HOLO TRACK // LIVE',12,h-16);handCtx.textAlign='right';handCtx.fillText(`${w} × ${h}`,w-12,h-16);handCtx.restore();
+  }catch(e){handStatus.textContent='HOLO MESH · Tracking…';}
  }
  requestAnimationFrame(drawHandMesh);
 }
