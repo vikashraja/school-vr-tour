@@ -1,1 +1,0 @@
-Copy all files from node_modules/@mediapipe/tasks-vision/wasm into this folder. This note file can be removed afterwards.
