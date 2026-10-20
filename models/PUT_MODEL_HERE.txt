@@ -1,0 +1,1 @@
+Place hand_landmarker.task in this folder. See README.md for source.
