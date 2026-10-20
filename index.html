@@ -144,6 +144,11 @@ function drawHandMesh(){
   const vignette=handCtx.createRadialGradient(w*.5,h*.48,Math.min(w,h)*.08,w*.5,h*.48,Math.max(w,h)*.7);
   vignette.addColorStop(0,'rgba(0,35,55,.08)');vignette.addColorStop(1,'rgba(0,0,0,.62)');
   handCtx.fillStyle=vignette;handCtx.fillRect(0,0,w,h);handCtx.restore();
+   // Subtle animated scan beam for a cleaner holographic HUD.
+   const scanY=((now*.075)%(h+100))-50;
+   const scan=handCtx.createLinearGradient(0,scanY-28,0,scanY+28);
+   scan.addColorStop(0,'rgba(0,220,255,0)');scan.addColorStop(.5,'rgba(0,220,255,0.055)');scan.addColorStop(1,'rgba(0,220,255,0)');
+   handCtx.fillStyle=scan;handCtx.fillRect(0,Math.max(0,scanY-28),w,56);
   try{
    const result=handLandmarker.detectForVideo(handVideo,now);
    const hands=result.landmarks||[];
@@ -192,9 +197,7 @@ function drawHandMesh(){
     handCtx.beginPath();handCtx.arc(cx,cy,r,now/1000,now/1000+Math.PI*1.45);handCtx.stroke();
     handCtx.beginPath();handCtx.arc(cx,cy,r*.72,-now/1300,-now/1300+Math.PI*1.2);handCtx.stroke();handCtx.restore();
    }
-   // Small HUD footer.
-   handCtx.save();handCtx.font=`${Math.max(10,w/85)}px monospace`;handCtx.fillStyle='rgba(115,240,255,.8)';
-   handCtx.fillText('HOLO TRACK // LIVE',12,h-16);handCtx.textAlign='right';handCtx.fillText(`${w} × ${h}`,w-12,h-16);handCtx.restore();
+    // Footer labels removed for a clean, full-screen display.
   }catch(e){handStatus.textContent='HOLO MESH · Tracking…';}
  }
  requestAnimationFrame(drawHandMesh);
