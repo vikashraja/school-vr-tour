@@ -14,10 +14,10 @@ h1{font-size:18px;margin:0}#where{font-size:12px;color:#bac6d9;margin-top:4px}.t
 #bar{display:flex;flex-wrap:wrap;gap:7px;padding:9px;background:#151f31;z-index:4}button,select{border:1px solid #465873;border-radius:9px;padding:10px 11px;min-height:40px;background:#25334a;color:#fff;font-size:14px}button{cursor:pointer}button.primary{background:#167d74;border-color:#37b9a9}select{flex:1;min-width:155px}
 #viewer{flex:1;min-height:0;position:relative}a-scene{width:100%;height:100%}#hint{position:absolute;bottom:10px;left:10px;right:10px;padding:9px 11px;border-radius:10px;background:#0009;text-align:center;font-size:12px;z-index:3;pointer-events:none}
 #foot{font-size:11px;color:#bac6d9;padding:7px 10px;background:#101827}
-#handPanel{position:fixed;inset:0;background:radial-gradient(ellipse at center,#071b2b 0%,#02070d 55%,#000 100%);z-index:20;display:flex;align-items:center;justify-content:center;flex-direction:column}
-#handPanel[hidden]{display:none}#handVideo{display:none}#handCanvas{width:100%;height:100%;object-fit:contain;background:#000;position:absolute;inset:0}
-#handStatus{position:absolute;top:14px;left:12px;right:12px;z-index:22;color:#aafaff;background:rgba(2,18,30,.78);border:1px solid rgba(45,231,255,.45);box-shadow:0 0 18px rgba(0,220,255,.18);padding:10px 12px;border-radius:12px;font-size:13px;letter-spacing:.04em;text-shadow:0 0 8px #00d9ff}
-#stopHand{position:absolute;bottom:20px;left:50%;transform:translateX(-50%);z-index:22;background:rgba(3,25,38,.9);border-color:#26eaff;color:#c9fbff;box-shadow:0 0 18px #00cfff55}
+#handPanel{position:fixed;inset:0;width:100vw;height:100dvh;min-height:100%;overflow:hidden;background:radial-gradient(ellipse at center,#071b2b 0%,#02070d 55%,#000 100%);z-index:20;display:flex;align-items:center;justify-content:center;flex-direction:column;touch-action:manipulation}
+#handPanel[hidden]{display:none}#handVideo{display:none}#handCanvas{display:block;width:100%;height:100%;object-fit:contain;background:transparent;position:absolute;inset:0;max-width:100vw;max-height:100dvh}
+#handStatus{display:none!important}
+#stopHand{position:absolute;bottom:calc(16px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);z-index:22;background:rgba(3,25,38,.9);border:1px solid #26eaff;color:#c9fbff;box-shadow:0 0 18px #00cfff55;backdrop-filter:blur(8px);white-space:nowrap;padding:13px 18px;border-radius:14px;font-size:16px}
 @media(min-width:760px){h1{font-size:20px}#bar{padding:10px 14px}}
 </style>
 </head>
